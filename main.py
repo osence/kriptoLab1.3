@@ -5,21 +5,20 @@
 # Секретная экспонента (d = (Fi * k + 1) / e) Нужно подставлять k пока не получится целое число
 
 import random
-
-# Генерируем простые числа до 1000
 import sys
 
+BORDER = 1000
+# Генерируем простые числа до 1000
 
 def get_primes():
     # Листинг 1
     # вводим N
-    n = 1000
     # создаем пустой список для хранения простых чисел
     lst = []
     # в k будем хранить количество делителей
     k = 0
     # пробегаем все числа от 2 до N
-    for i in range(2, n + 1):
+    for i in range(2, BORDER + 1):
         # пробегаем все числа от 2 до текущего
         for j in range(2, i):
             # ищем количество делителей
@@ -53,12 +52,15 @@ def isint(s):
 
 
 # Генерация двух простых чисел A B
-def generate_prime_numbers():
+def generate_prime_numbers(m):
     sequence = get_primes()
+    if sequence[len(sequence)-1] * sequence[len(sequence)-2] < m:
+        return None
     number1 = random.choice(sequence)
     number2 = random.choice(sequence)
-    while number1 == number2:
+    while number1 * number2 < m or number1 == number2:
         number2 = random.choice(sequence)
+        number1 = random.choice(sequence)
     pair = (number1, number2)
     return pair
 
@@ -83,14 +85,24 @@ def generate_secret_exponent(fi, open_e):
 
 # Генерация цифровой подписи
 def generate_s(secret_e, n, m):
-    print(m, d ,n)
-    return m ** d % n
+    return m ** secret_e % n
 
+
+# Скрытое сообщение
+message = 999999
 
 # Генерация двух простых чисел A B
-pairAB = generate_prime_numbers()
+try:
+    pairAB = generate_prime_numbers(message)
+    if pairAB == None:
+        raise Exception("Невозможно подобрать простые числа в пределах %d для данного сообщения" % BORDER)
+except Exception as e:
+    print(e)
+    sys.exit(1)
+
 p = pairAB[0]
 q = pairAB[1]
+print("Выбранные простые числа:", p, q)
 # Открытый ключ (Перемножение простых чисел N = A * B)
 n = p * q
 # Функция эйлера (Euler = (A-1) * (B-1))
@@ -103,10 +115,7 @@ print("Открытый ключ:", e, n)
 
 print("Закрытый ключ:", d, n)
 
-# Скрытое сообщение
-message = 9999999999 % n
 
-print(sys.maxsize)
 # Генерация цифровой подписи
 s = generate_s(d, n, message)
 
@@ -114,3 +123,4 @@ print("Цифровая подпись:", s)
 
 deshifr_message = s ** e % n
 print("Сверка сообщение", message, deshifr_message)
+# Результат будет неправильным в случае если открытый ключ n меньше чем сообщение
