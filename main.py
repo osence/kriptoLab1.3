@@ -5,122 +5,130 @@
 # Секретная экспонента (d = (Fi * k + 1) / e) Нужно подставлять k пока не получится целое число
 
 import random
-import sys
 
-BORDER = 1000
-# Генерируем простые числа до 1000
+P = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 71, 73, 79, 8, 3, 89, 97, 101]
+B = 2**32
 
-def get_primes():
-    # Листинг 1
-    # вводим N
-    # создаем пустой список для хранения простых чисел
-    lst = []
-    # в k будем хранить количество делителей
-    k = 0
-    # пробегаем все числа от 2 до N
-    for i in range(2, BORDER + 1):
-        # пробегаем все числа от 2 до текущего
-        for j in range(2, i):
-            # ищем количество делителей
-            if i % j == 0:
-                k = k + 1
-        # если делителей нет, добавляем число в список
-        if k == 0:
-            lst.append(i)
-        else:
-            k = 0
-    # выводим на экран список
-    return lst
+def generatePrime(border):
+    n = random.randint(2, border / 2)
+    n = 2 * n - 1
+    while not isPrime(n):
+        n = random.randint(2, border / 2)
+        n = 2 * n - 1
+    return n
 
 
-# def is_prime(num):
-#     if num == 2:
-#         return True
-#     if num < 2 or num % 2 == 0:
-#         return False
-#     for n in range(3, int(num ** 0.5) + 2, 2):
-#         if num % n == 0:
-#             return False
-#     return True
-
-def isint(s):
-    try:
-        int(s)
-        return True
-    except ValueError:
-        return False
+def isPrime(n):
+    for elem in P:
+        if n % elem == 0:
+            if n == elem:
+                return True
+            else:
+                return False
+    r = 100000
+    return rabinMiller(n, r)
 
 
 # Генерация двух простых чисел A B
-def generate_prime_numbers(m):
-    sequence = get_primes()
-    if sequence[len(sequence)-1] * sequence[len(sequence)-2] < m:
-        return None
-    number1 = random.choice(sequence)
-    number2 = random.choice(sequence)
-    while number1 * number2 < m or number1 == number2:
-        number2 = random.choice(sequence)
-        number1 = random.choice(sequence)
-    pair = (number1, number2)
-    return pair
+
+
+def rabinMiller(n, r):
+    b = n - 1
+    betta = bin(b)
+    k = -1
+    while b > 0:
+        k += 1
+        betta = betta[:k + 2] + str(b % 2) + betta[k + 3:]
+        b = b // 2
+    for j in range(r):
+        a = random.randint(2, n - 1)
+        if euclid(a, n)[0] > 1:
+            return False
+        d = 1
+        for i in range(k, -1, -1):
+            x = d
+            d = d ** 2 % n
+            if (d == 1) and not (x == 1) and not (x == n - 1):
+                return False
+            if betta[i + 2] == 1:
+                d = (d * a) % n
+        if not d == 1:
+            return False
+    return True
+
+
+def euclid(a, b):
+    if a == 0:
+        return [b, 0, 1]
+    else:
+        g, x, y = euclid(b % a, a)
+        return [g, y - (b // a) * x, x]
+
+
+def modExp(a, b, n):
+    if b == 0:
+        return 1
+    if b % 2 == 0:
+        x = modExp(a, b // 2, n)
+        return x ** 2 % n
+    x = modExp(a, (b - 1) // 2, n)
+    x = x ** 2 % n
+    return (a * x) % n
+
+
+def modInv(a, b):
+    g, x, _ = euclid(a, b)
+    if g == 1:
+        return x % b
+    raise Exception('gcd(a, b) != 1')
 
 
 # Открытая экспонента (Простое малое число на которое не делиться Euler)
 def generate_open_exponent(fi):
-    test_e = 1
-    while fi % test_e == 0:
-        test_e += 1
-    return test_e
+    e = generatePrime(2 ** 16)
+    while not euclid(fi, e)[0] == 1:
+        e = generatePrime(2 ** 16)
+    return e
 
 
 # Секретная экспонента (d = (Fi * k + 1) / e) Нужно подставлять k пока не получится целое число
-def generate_secret_exponent(fi, open_e):
-    k = 1
-    secret_e = (fi * k + 1) / open_e
-    while secret_e % 1 != 0:
-        k += 1
-        secret_e = (fi * k + 1) / open_e
-    return int(secret_e)
+def generate_secret_exponent(fi, e):
+    return modInv(e, fi)
 
 
 # Генерация цифровой подписи
 def generate_s(secret_e, n, m):
-    return m ** secret_e % n
+    return modExp(m, secret_e, n)
 
 
 # Скрытое сообщение
-message = 999999
-
+message = 2345345345345123
+n = 0
+q = 0
 # Генерация двух простых чисел A B
-try:
-    pairAB = generate_prime_numbers(message)
-    if pairAB == None:
-        raise Exception("Невозможно подобрать простые числа в пределах %d для данного сообщения" % BORDER)
-except Exception as e:
-    print(e)
-    sys.exit(1)
-
-p = pairAB[0]
-q = pairAB[1]
+while message > n:
+    p = generatePrime(B)
+    while q == p or q == 0:
+        q = generatePrime(B)
+    n = p * q
 print("Выбранные простые числа:", p, q)
-# Открытый ключ (Перемножение простых чисел N = A * B)
-n = p * q
+# Модуль (Перемножение простых чисел N = A * B)
+
+
 # Функция эйлера (Euler = (A-1) * (B-1))
-euler = (p - 1) * (q - 1)
+fi = (p - 1) * (q - 1)
 # Открытая экспонента (Простое малое число на которое не делиться Euler)
-e = generate_open_exponent(euler)
+e = generate_open_exponent(fi)
 # Секретная экспонента (d = (Fi * k + 1) / e) Нужно подставлять k пока не получится целое число
-d = generate_secret_exponent(euler, e)
+d = generate_secret_exponent(fi, e)
 print("Открытый ключ:", e, n)
 
 print("Закрытый ключ:", d, n)
 
-
 # Генерация цифровой подписи
 s = generate_s(d, n, message)
-
 print("Цифровая подпись:", s)
 
-deshifr_message = s ** e % n
+deshifr_message = modExp(s, e, n)
 print("Сверка сообщение", message, deshifr_message)
 # Результат будет неправильным в случае если открытый ключ n меньше чем сообщение
